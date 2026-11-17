@@ -35,6 +35,7 @@ export default function CartPage() {
     appliedCoupon,
     applyCoupon,
     removeCoupon,
+    user,
   } = useStore();
 
   const [couponCodeInput, setCouponCodeInput] = useState("");
@@ -369,13 +370,36 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <Link
-                  href="/checkout"
-                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 mt-4"
-                >
-                  <span>Proceed to Simulated Checkout</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+                {user ? (
+                  <Link
+                    href="/checkout"
+                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 mt-4"
+                  >
+                    <span>Proceed to Simulated Checkout</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                ) : (
+                  <div className="space-y-2.5 mt-4">
+                    <Link
+                      href="/login?redirect=/checkout"
+                      className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25"
+                    >
+                      <span>Sign In to Checkout</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                    <div className="text-center">
+                      <p className="text-[11px] text-slate-500">
+                        New customer?{" "}
+                        <Link
+                          href="/register?redirect=/checkout"
+                          className="text-blue-600 font-bold hover:underline"
+                        >
+                          Sign Up with Dummy Details
+                        </Link>
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-3 text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />

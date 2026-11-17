@@ -48,35 +48,53 @@ export default function CheckoutPage() {
 
   // Step 1: Customer Info
   const [customerInfo, setCustomerInfo] = useState({
-    fullName: user?.fullName || "John Doe",
-    email: user?.email || "customer@shopease.com",
-    mobile: user?.mobile || "+91 98765 43210",
+    fullName: user?.fullName || "",
+    email: user?.email || "",
+    mobile: user?.mobile || "",
   });
 
   // Step 2: Address (Selected from saved or custom form)
   const [selectedAddressId, setSelectedAddressId] = useState<string>(
-    user?.addresses.find((a) => a.isDefault)?.id || user?.addresses[0]?.id || "new"
+    user?.addresses?.find((a) => a.isDefault)?.id || user?.addresses?.[0]?.id || "new"
   );
 
   const [customAddress, setCustomAddress] = useState<Address>({
     id: "addr-custom",
-    fullName: user?.fullName || "John Doe",
-    mobile: user?.mobile || "+91 98765 43210",
-    houseNo: "Flat 402, Green Meadows",
-    street: "12th Main Road, Indiranagar",
-    city: "Bengaluru",
-    state: "Karnataka",
-    pincode: "560038",
+    fullName: user?.fullName || "",
+    mobile: user?.mobile || "",
+    houseNo: user?.addresses?.[0]?.houseNo || "",
+    street: user?.addresses?.[0]?.street || "",
+    city: user?.addresses?.[0]?.city || "",
+    state: user?.addresses?.[0]?.state || "",
+    pincode: user?.addresses?.[0]?.pincode || "",
     addressType: "Home",
     isDefault: false,
   });
 
+  useEffect(() => {
+    if (user) {
+      setCustomerInfo({
+        fullName: user.fullName || "",
+        email: user.email || "",
+        mobile: user.mobile || "",
+      });
+      if (user.addresses && user.addresses.length > 0) {
+        const def = user.addresses.find((a) => a.isDefault) || user.addresses[0];
+        setSelectedAddressId(def.id);
+        setCustomAddress({
+          ...def,
+          id: "addr-custom",
+        });
+      }
+    }
+  }, [user]);
+
   // Step 4: Simulated Payment Method Selection
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("FreeDemo");
-  const [upiId, setUpiId] = useState("john.doe@okaxis");
+  const [upiId, setUpiId] = useState("customer@okaxis");
   const [cardDetails, setCardDetails] = useState({
     number: "4242 4242 4242 4242",
-    name: "John Doe",
+    name: user?.fullName || "Customer",
     expiry: "12/28",
     cvv: "123",
   });
@@ -87,16 +105,21 @@ export default function CheckoutPage() {
   const handleFillDemoCard = () => {
     setCardDetails({
       number: "4242 4242 4242 4242",
-      name: customerInfo.fullName || "John Doe",
+      name: customerInfo.fullName || "Customer",
       expiry: "12/28",
       cvv: "123",
     });
     showToast("Test Card Populated", "Sample Visa demo card details inserted.", "info");
   };
 
-  const handlePlaceOrder = (e: React.FormEvent) => {
+  const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError("");
+
+    if (!user) {
+      setValidationError("Please sign in or register before completing your order.");
+      return;
+    }
 
     if (cart.length === 0) {
       setValidationError("Your cart is empty. Please add items before placing an order.");
@@ -127,9 +150,8 @@ export default function CheckoutPage() {
 
     setIsProcessing(true);
 
-    // Simulate instant payment authorization
-    setTimeout(() => {
-      const order = placeOrder({
+    try {
+      const order = await placeOrder({
         customer: customerInfo,
         deliveryAddress: finalAddress,
         paymentMethod,
@@ -142,7 +164,10 @@ export default function CheckoutPage() {
 
       setIsProcessing(false);
       router.push(`/order-success/${order.id}`);
-    }, 1200);
+    } catch (err: any) {
+      setIsProcessing(false);
+      setValidationError("Failed to save order to database. Please try again.");
+    }
   };
 
   return (
@@ -169,7 +194,45 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        {cart.length === 0 ? (
+        {!user ? (
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-8 sm:p-12 text-center max-w-lg mx-auto shadow-sm">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full uppercase tracking-wider">
+              Step 1: Customer Authentication
+            </span>
+            <h2 className="text-2xl font-black text-slate-900 mt-3 mb-2">
+              Sign In or Register to Checkout
+            </h2>
+            <p className="text-xs text-slate-500 mb-8 leading-relaxed">
+              Before completing your purchase, please sign in or register with dummy customer details (Name, Mobile, Email, Password, Address). All details are securely persisted in the local database.
+            </p>
+
+            <div className="space-y-3">
+              <Link
+                href="/login?redirect=/checkout"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+              >
+                <span>Log In with Existing Details</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+
+              <Link
+                href="/register?redirect=/checkout"
+                className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2"
+              >
+                <span>New Customer? Register with Dummy Details</span>
+              </Link>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Customer details & addresses are saved in the local SQLite database</span>
+            </div>
+          </div>
+        ) : cart.length === 0 ? (
           <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center max-w-md mx-auto shadow-xs">
             <ShoppingBag className="w-12 h-12 text-slate-400 mx-auto mb-3" />
             <h2 className="text-lg font-bold text-slate-900 mb-1">Your Cart is Empty</h2>

@@ -256,17 +256,6 @@ export default function AccountPage() {
                 <span>Manage Wishlist</span>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </Link>
-              {user?.role === "admin" && (
-                <Link
-                  href="/admin"
-                  className="flex items-center justify-between p-3 rounded-xl bg-amber-50 text-amber-900 text-xs font-bold transition"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-amber-600" /> Admin Dashboard
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-amber-600" />
-                </Link>
-              )}
             </div>
           </div>
 

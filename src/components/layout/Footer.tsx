@@ -162,8 +162,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/admin" className="hover:text-amber-400 font-semibold transition">
-                  Admin Dashboard Demo
+                <Link href="/products" className="hover:text-blue-400 transition">
+                  Special Promotions
                 </Link>
               </li>
             </ul>

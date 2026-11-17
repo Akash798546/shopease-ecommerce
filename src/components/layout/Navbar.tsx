@@ -13,7 +13,6 @@ import {
   Menu,
   X,
   ChevronDown,
-  ShieldCheck,
   LogOut,
   Package,
   Layers,
@@ -24,10 +23,10 @@ import {
   Activity,
   BookOpen,
   Smile,
+  Phone,
 } from "lucide-react";
 import { formatPrice } from "@/utils/formatters";
 
-// Map category icons
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   electronics: Laptop,
   fashion: Shirt,
@@ -45,8 +44,6 @@ export default function Navbar() {
     cartSubtotal,
     wishlistCount,
     user,
-    isAdmin,
-    loginAsDemo,
     logout,
     products,
     categories,
@@ -56,7 +53,6 @@ export default function Navbar() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -98,35 +94,27 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-      {/* 1. Top Announcement Bar */}
+      {/* 1. Customer Top Announcement Bar (No Admin Controls Here!) */}
       <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white text-xs py-1.5 px-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
             <span className="bg-amber-400 text-slate-900 font-bold px-1.5 py-0.5 rounded text-[10px] tracking-wide uppercase">
               Special Offer
             </span>
-            <span>Use coupon <strong className="underline decoration-amber-300">SAVE10</strong> for 10% off | Free Delivery on orders over ₹999</span>
+            <span>
+              Use coupon <strong className="underline decoration-amber-300">SAVE10</strong> for 10% off | Free Delivery on orders over ₹999
+            </span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
-            <span className="text-blue-200">Demo Mode:</span>
-            <button
-              onClick={() => loginAsDemo("customer")}
-              className={`text-xs px-2 py-0.5 rounded transition ${
-                !isAdmin && user ? "bg-white text-blue-900 font-semibold" : "text-white/80 hover:text-white"
-              }`}
-            >
-              Customer
-            </button>
+          <div className="hidden sm:flex items-center gap-4 shrink-0 text-blue-100 text-xs">
+            <span className="flex items-center gap-1">
+              <Phone className="w-3 h-3 text-amber-300" />
+              <span>Support: 1800-000-EASE</span>
+            </span>
             <span className="text-blue-300/50">|</span>
-            <button
-              onClick={() => loginAsDemo("admin")}
-              className={`text-xs px-2 py-0.5 rounded transition ${
-                isAdmin ? "bg-amber-400 text-slate-900 font-bold" : "text-white/80 hover:text-white"
-              }`}
-            >
-              Admin Panel
-            </button>
+            <Link href="/account/orders" className="hover:text-white transition">
+              Track Order
+            </Link>
           </div>
         </div>
       </div>
@@ -144,7 +132,7 @@ export default function Navbar() {
                 Shop<span className="text-blue-600">Ease</span>
               </span>
               <span className="text-[10px] tracking-widest text-slate-400 uppercase font-semibold">
-                Commerce Platform
+                Online Shopping
               </span>
             </div>
           </Link>
@@ -198,7 +186,6 @@ export default function Navbar() {
                             alt={prod.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                             onError={(e) => {
-                              // SVG placeholder fallback
                               e.currentTarget.src =
                                 "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect fill='%23e2e8f0' width='100' height='100'/><text fill='%2364748b' x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='10'>ShopEase</text></svg>";
                             }}
@@ -235,7 +222,7 @@ export default function Navbar() {
                   </div>
                 ) : (
                   <div className="p-6 text-center text-sm text-slate-500">
-                    No products found matching &ldquo;{searchQuery}&rdquo;. Try searching for &ldquo;iPhone&rdquo;, &ldquo;Dress&rdquo;, or &ldquo;Book&rdquo;.
+                    No products found matching &ldquo;{searchQuery}&rdquo;.
                   </div>
                 )}
               </div>
@@ -279,22 +266,22 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* User Profile Menu */}
+            {/* User Profile Menu (Pure Customer View) */}
             <div ref={userMenuRef} className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-full border border-slate-200 hover:border-blue-400 hover:bg-slate-50 transition-colors text-slate-700"
                 aria-label="User Account"
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-slate-700 to-slate-900 text-white flex items-center justify-center text-xs font-bold">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center text-xs font-bold">
                   {user ? user.fullName.charAt(0) : <UserIcon className="w-4 h-4" />}
                 </div>
                 <div className="hidden xl:flex flex-col text-left">
                   <span className="text-xs font-semibold leading-tight truncate max-w-[90px]">
-                    {user ? user.fullName : "Account"}
+                    {user ? user.fullName : "Sign In"}
                   </span>
                   <span className="text-[10px] text-slate-400 leading-none">
-                    {user ? (isAdmin ? "Admin" : "Customer") : "Sign In"}
+                    {user ? "My Account" : "Welcome"}
                   </span>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
@@ -302,18 +289,13 @@ export default function Navbar() {
 
               {/* User Dropdown */}
               {userDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                   {user ? (
                     <>
                       <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
-                        <p className="text-xs text-slate-500">Signed in as</p>
+                        <p className="text-xs text-slate-400 font-medium">Signed in as</p>
                         <p className="text-sm font-bold text-slate-900 truncate">{user.fullName}</p>
                         <p className="text-xs text-slate-500 truncate">{user.email}</p>
-                        {isAdmin && (
-                          <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                            <ShieldCheck className="w-3 h-3" /> Administrator
-                          </span>
-                        )}
                       </div>
 
                       <div className="py-1">
@@ -331,7 +313,7 @@ export default function Navbar() {
                           className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                         >
                           <Package className="w-4 h-4 text-slate-400" />
-                          Order History & Invoices
+                          My Orders & Invoices
                         </Link>
                         <Link
                           href="/wishlist"
@@ -341,37 +323,15 @@ export default function Navbar() {
                           <Heart className="w-4 h-4 text-slate-400" />
                           My Wishlist ({wishlistCount})
                         </Link>
-
-                        {/* Admin Dashboard Link */}
-                        <Link
-                          href="/admin"
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 font-semibold transition-colors border-t border-slate-100 mt-1"
-                        >
-                          <ShieldCheck className="w-4 h-4 text-amber-600" />
-                          Admin Dashboard
-                        </Link>
                       </div>
 
                       <div className="border-t border-slate-100 pt-1 mt-1">
-                        <div className="px-4 py-2 text-[11px] text-slate-400 uppercase font-semibold">
-                          Quick Demo Switch
-                        </div>
-                        <button
-                          onClick={() => {
-                            loginAsDemo(isAdmin ? "customer" : "admin");
-                            setUserDropdownOpen(false);
-                          }}
-                          className="w-full text-left px-4 py-1.5 text-xs text-slate-600 hover:bg-slate-100 transition-colors"
-                        >
-                          Switch to {isAdmin ? "Demo Customer" : "Demo Admin"}
-                        </button>
                         <button
                           onClick={() => {
                             logout();
                             setUserDropdownOpen(false);
                           }}
-                          className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                          className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors font-medium"
                         >
                           <LogOut className="w-4 h-4" />
                           Sign Out
@@ -380,26 +340,24 @@ export default function Navbar() {
                     </>
                   ) : (
                     <div className="p-3">
-                      <p className="text-xs text-slate-500 mb-3 px-1">
-                        Access your order history, wishlist, and saved addresses.
+                      <p className="text-xs text-slate-500 mb-3 px-1 leading-relaxed">
+                        Sign in to track orders, manage saved addresses, and complete checkout.
                       </p>
                       <Link
                         href="/login"
                         onClick={() => setUserDropdownOpen(false)}
-                        className="block w-full py-2 px-3 text-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-xs"
+                        className="block w-full py-2 px-3 text-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                       >
-                        Sign In / Register
+                        Sign In
                       </Link>
-                      <div className="mt-2 pt-2 border-t border-slate-100">
-                        <button
-                          onClick={() => {
-                            loginAsDemo("customer");
-                            setUserDropdownOpen(false);
-                          }}
-                          className="w-full text-center py-1.5 text-xs text-blue-600 hover:underline font-medium"
+                      <div className="mt-2 text-center">
+                        <Link
+                          href="/register"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="text-xs text-blue-600 font-semibold hover:underline block py-1"
                         >
-                          1-Click Demo Customer Login
-                        </button>
+                          New customer? Create account &rarr;
+                        </Link>
                       </div>
                     </div>
                   )}
@@ -480,7 +438,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* 4. Mobile Slide-out Menu */}
+      {/* 4. Mobile Slide-out Menu (Customer Pure) */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-4 shadow-xl">
           <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2">
@@ -523,14 +481,6 @@ export default function Navbar() {
             >
               <span>My Orders & Invoices</span>
               <Package className="w-4 h-4 text-slate-400" />
-            </Link>
-            <Link
-              href="/admin"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-between p-2 rounded-lg text-amber-700 text-sm font-bold bg-amber-50"
-            >
-              <span>Admin Dashboard</span>
-              <ShieldCheck className="w-4 h-4 text-amber-600" />
             </Link>
           </div>
         </div>

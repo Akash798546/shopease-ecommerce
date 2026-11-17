@@ -16,7 +16,6 @@ import {
 import { PRODUCTS } from "@/data/products";
 import { CATEGORIES } from "@/data/categories";
 import { COUPONS } from "@/data/coupons";
-import { DEMO_CUSTOMER, DEMO_ADMIN, INITIAL_DEMO_ORDERS } from "@/data/mockUsers";
 import { generateOrderId } from "@/utils/formatters";
 
 interface AppContextType {
@@ -59,8 +58,21 @@ interface AppContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => { success: boolean; message: string };
-  loginAsDemo: (role: "customer" | "admin") => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  registerUser: (data: {
+    fullName: string;
+    email: string;
+    mobile: string;
+    password: string;
+    address?: {
+      houseNo: string;
+      street: string;
+      city: string;
+      state: string;
+      pincode: string;
+      addressType?: "Home" | "Work";
+    };
+  }) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   updateUserProfile: (profile: Partial<User>) => void;
   saveAddress: (address: Omit<Address, "id">, addressId?: string) => void;
@@ -74,8 +86,8 @@ interface AppContextType {
     deliveryAddress: Address;
     paymentMethod: PaymentMethod;
     paymentDetails?: { upiId?: string; cardLast4?: string; transactionReference: string };
-  }) => Order;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  }) => Promise<Order>;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
 
   // Toasts
   toasts: ToastMessage[];
@@ -86,22 +98,31 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // 1. Initial State from Storage or Defaults
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [categories] = useState<Category[]>(CATEGORIES);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-  const [user, setUser] = useState<User | null>(DEMO_CUSTOMER);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_DEMO_ORDERS);
+  const [user, setUser] = useState<User | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load persisted state on mount
+  // Load persisted session on mount & fetch orders from SQLite DB
   useEffect(() => {
     try {
-      const savedProducts = localStorage.getItem("shopease_products");
-      if (savedProducts) setProducts(JSON.parse(savedProducts));
+      const savedUser = localStorage.getItem("shopease_session_user");
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        // Fetch user's orders from SQLite DB
+        fetch(`/api/orders?userId=${parsed.id}&role=${parsed.role}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.orders) setOrders(data.orders);
+          })
+          .catch(() => {});
+      }
 
       const savedCart = localStorage.getItem("shopease_cart");
       if (savedCart) setCart(JSON.parse(savedCart));
@@ -109,74 +130,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const savedWishlist = localStorage.getItem("shopease_wishlist");
       if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
 
-      const savedOrders = localStorage.getItem("shopease_orders");
-      if (savedOrders) setOrders(JSON.parse(savedOrders));
-
-      const savedUser = localStorage.getItem("shopease_user");
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      } else {
-        setUser(DEMO_CUSTOMER);
-      }
+      const savedProducts = localStorage.getItem("shopease_products");
+      if (savedProducts) setProducts(JSON.parse(savedProducts));
     } catch (e) {
-      console.error("Failed to load state from localStorage:", e);
+      console.error("Hydration Error:", e);
     }
     setIsHydrated(true);
   }, []);
 
-  // Sync products to localStorage
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem("shopease_products", JSON.stringify(products));
-    } catch (e) {
-      console.error("Failed to sync products:", e);
-    }
-  }, [products, isHydrated]);
-
-  // Sync cart to localStorage
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem("shopease_cart", JSON.stringify(cart));
-    } catch (e) {
-      console.error("Failed to sync cart:", e);
-    }
-  }, [cart, isHydrated]);
-
-  // Sync wishlist to localStorage
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem("shopease_wishlist", JSON.stringify(wishlist));
-    } catch (e) {
-      console.error("Failed to sync wishlist:", e);
-    }
-  }, [wishlist, isHydrated]);
-
-  // Sync orders to localStorage
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      localStorage.setItem("shopease_orders", JSON.stringify(orders));
-    } catch (e) {
-      console.error("Failed to sync orders:", e);
-    }
-  }, [orders, isHydrated]);
-
-  // Sync user to localStorage
+  // Sync session user
   useEffect(() => {
     if (!isHydrated) return;
     try {
       if (user) {
-        localStorage.setItem("shopease_user", JSON.stringify(user));
+        localStorage.setItem("shopease_session_user", JSON.stringify(user));
       } else {
-        localStorage.removeItem("shopease_user");
+        localStorage.removeItem("shopease_session_user");
       }
-    } catch (e) {
-      console.error("Failed to sync user:", e);
-    }
+    } catch (e) {}
   }, [user, isHydrated]);
+
+  // Sync cart
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem("shopease_cart", JSON.stringify(cart));
+    } catch (e) {}
+  }, [cart, isHydrated]);
+
+  // Sync wishlist
+  useEffect(() => {
+    if (!isHydrated) return;
+    try {
+      localStorage.setItem("shopease_wishlist", JSON.stringify(wishlist));
+    } catch (e) {}
+  }, [wishlist, isHydrated]);
 
   // Toast Helpers
   const showToast = (
@@ -205,25 +193,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addProduct = (newProduct: Omit<Product, "id">) => {
     const id = "prod-" + Date.now();
     const product: Product = { ...newProduct, id };
-    setProducts((prev) => [product, ...prev]);
-    showToast("Product Added", `"${product.name}" has been added to catalog.`, "success");
+    const updated = [product, ...products];
+    setProducts(updated);
+    try {
+      localStorage.setItem("shopease_products", JSON.stringify(updated));
+    } catch (e) {}
+    showToast("Product Added", `"${product.name}" added to catalog.`, "success");
   };
 
   const updateProduct = (updated: Product) => {
-    setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    const prods = products.map((p) => (p.id === updated.id ? updated : p));
+    setProducts(prods);
+    try {
+      localStorage.setItem("shopease_products", JSON.stringify(prods));
+    } catch (e) {}
     showToast("Product Updated", `"${updated.name}" details updated.`, "success");
   };
 
   const deleteProduct = (id: string) => {
     const prod = products.find((p) => p.id === id);
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    const prods = products.filter((p) => p.id !== id);
+    setProducts(prods);
+    try {
+      localStorage.setItem("shopease_products", JSON.stringify(prods));
+    } catch (e) {}
     showToast("Product Deleted", `"${prod?.name || "Item"}" removed from catalog.`, "info");
   };
 
   const updateStock = (productId: string, stock: number) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, stock: Math.max(0, stock) } : p))
+    const prods = products.map((p) =>
+      p.id === productId ? { ...p, stock: Math.max(0, stock) } : p
     );
+    setProducts(prods);
+    try {
+      localStorage.setItem("shopease_products", JSON.stringify(prods));
+    } catch (e) {}
     showToast("Stock Updated", `Inventory adjusted to ${stock} units.`, "info");
   };
 
@@ -297,13 +301,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const cartSubtotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
 
-  // Delivery: Free if subtotal > 999 or coupon is FREESHIP or cart is empty
   let deliveryFee = cartSubtotal >= 999 || cartSubtotal === 0 ? 0 : 99;
   if (appliedCoupon?.type === "free_shipping") {
     deliveryFee = 0;
   }
 
-  // Coupon Discount calculation
   let discountAmount = 0;
   if (appliedCoupon && cartSubtotal > 0) {
     if (appliedCoupon.type === "percentage") {
@@ -378,45 +380,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const wishlistCount = wishlist.length;
 
-  // Authentication & User Profile
-  const login = (email: string, pass: string) => {
-    const cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail === DEMO_ADMIN.email.toLowerCase() && pass === "admin123") {
-      setUser(DEMO_ADMIN);
-      showToast("Welcome Admin", "Signed in as ShopEase Administrator.", "success");
-      return { success: true, message: "Logged in as Admin" };
-    }
+  // Authentication & Registration with SQLite DB Backend
+  const registerUser = async (data: {
+    fullName: string;
+    email: string;
+    mobile: string;
+    password: string;
+    address?: {
+      houseNo: string;
+      street: string;
+      city: string;
+      state: string;
+      pincode: string;
+      addressType?: "Home" | "Work";
+    };
+  }) => {
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        showToast("Registration Failed", json.error || "Unable to register.", "error");
+        return { success: false, message: json.error || "Failed to register" };
+      }
 
-    if (
-      (cleanEmail === DEMO_CUSTOMER.email.toLowerCase() && pass === "password123") ||
-      cleanEmail.includes("@")
-    ) {
-      const loggedUser = {
-        ...DEMO_CUSTOMER,
-        email: cleanEmail,
-        fullName: cleanEmail === DEMO_CUSTOMER.email ? "John Doe" : cleanEmail.split("@")[0],
-      };
-      setUser(loggedUser);
-      showToast("Welcome back!", `Signed in as ${loggedUser.fullName}.`, "success");
-      return { success: true, message: "Logged in successfully" };
+      setUser(json.user);
+      showToast("Account Created!", `Welcome to ShopEase, ${json.user.fullName}!`, "success");
+      return { success: true, message: "Registered successfully" };
+    } catch (e: any) {
+      showToast("Error", "Network or database error during registration.", "error");
+      return { success: false, message: e.message || "Failed" };
     }
-
-    showToast("Authentication Failed", "Please check your demo credentials.", "error");
-    return { success: false, message: "Invalid email or password." };
   };
 
-  const loginAsDemo = (role: "customer" | "admin") => {
-    if (role === "admin") {
-      setUser(DEMO_ADMIN);
-      showToast("Admin Mode Activated", "You have administrative privileges.", "success");
-    } else {
-      setUser(DEMO_CUSTOMER);
-      showToast("Customer Mode Activated", "Logged in as John Doe.", "success");
+  const login = async (email: string, pass: string) => {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pass }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        showToast("Login Failed", json.error || "Invalid credentials.", "error");
+        return { success: false, message: json.error || "Invalid email or password" };
+      }
+
+      setUser(json.user);
+
+      // Fetch user's orders from DB
+      fetch(`/api/orders?userId=${json.user.id}&role=${json.user.role}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.orders) setOrders(d.orders);
+        })
+        .catch(() => {});
+
+      showToast("Welcome back!", `Signed in as ${json.user.fullName}.`, "success");
+      return { success: true, message: "Logged in successfully" };
+    } catch (e: any) {
+      showToast("Error", "Database error during login.", "error");
+      return { success: false, message: e.message || "Login failed" };
     }
   };
 
   const logout = () => {
     setUser(null);
+    setOrders([]);
+    localStorage.removeItem("shopease_session_user");
     showToast("Signed Out", "You have been logged out safely.", "info");
   };
 
@@ -447,7 +481,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updatedUser = { ...user, addresses: newAddresses };
     setUser(updatedUser);
-    showToast("Address Saved", "Delivery address has been updated.", "success");
+    showToast("Address Saved", "Delivery address updated.", "success");
   };
 
   const deleteAddress = (id: string) => {
@@ -461,11 +495,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     showToast("Address Removed", "Delivery address deleted.", "info");
   };
 
-  // Orders Management
+  // Orders Management with SQLite Database persistence
   const getOrderById = (orderId: string) =>
     orders.find((o) => o.id === orderId || o.orderNumber === orderId);
 
-  const placeOrder = ({
+  const placeOrder = async ({
     customer,
     deliveryAddress,
     paymentMethod,
@@ -475,7 +509,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deliveryAddress: Address;
     paymentMethod: PaymentMethod;
     paymentDetails?: { upiId?: string; cardLast4?: string; transactionReference: string };
-  }): Order => {
+  }): Promise<Order> => {
     const orderNumber = generateOrderId();
     const orderId = "ord-" + Date.now();
 
@@ -505,7 +539,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       estimatedDelivery: "Delivering in 3-5 business days",
     };
 
-    // 1. Update product stock
+    // 1. Save in SQLite DB via backend API
+    try {
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newOrder,
+          userId: user?.id,
+        }),
+      });
+    } catch (e) {
+      console.error("Order DB Save Error:", e);
+    }
+
+    // 2. Decrement local product stock
     setProducts((prev) =>
       prev.map((prod) => {
         const cartItem = cart.find((item) => item.product.id === prod.id);
@@ -517,21 +565,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
     );
 
-    // 2. Add to orders
+    // 3. Update orders state & clear cart
     setOrders((prev) => [newOrder, ...prev]);
-
-    // 3. Clear cart & coupon
     setCart([]);
     setAppliedCoupon(null);
 
-    showToast("Order Placed!", `Order #${orderNumber} confirmed.`, "success");
+    showToast("Order Placed!", `Order #${orderNumber} saved to database.`, "success");
 
     return newOrder;
   };
 
-  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
+  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    // 1. Update in SQLite DB
+    try {
+      await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, status }),
+      });
+    } catch (e) {
+      console.error("Failed to update status in DB:", e);
+    }
+
+    // 2. Update state
     setOrders((prev) =>
-      prev.map((ord) => (ord.id === orderId || ord.orderNumber === orderId ? { ...ord, orderStatus: status } : ord))
+      prev.map((ord) =>
+        ord.id === orderId || ord.orderNumber === orderId ? { ...ord, orderStatus: status } : ord
+      )
     );
     showToast("Order Updated", `Order status changed to ${status}.`, "success");
   };
@@ -574,7 +634,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isAdmin: user?.role === "admin",
         login,
-        loginAsDemo,
+        registerUser,
         logout,
         updateUserProfile,
         saveAddress,

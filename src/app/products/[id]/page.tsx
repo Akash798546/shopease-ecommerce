@@ -39,6 +39,7 @@ export default function ProductDetailPage({
     toggleWishlist,
     isInWishlist,
     showToast,
+    user,
   } = useStore();
 
   const product = getProductById(productId);
@@ -346,11 +347,11 @@ export default function ProductDetailPage({
                   </button>
 
                   <Link
-                    href="/checkout"
+                    href={user ? "/checkout" : "/login?redirect=/checkout"}
                     onClick={() => addToCart(product, quantity)}
                     className="py-4 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition text-center shadow-md hidden sm:block shrink-0"
                   >
-                    Instant Checkout
+                    {user ? "Instant Checkout" : "Sign In & Buy"}
                   </Link>
                 </div>
               </div>

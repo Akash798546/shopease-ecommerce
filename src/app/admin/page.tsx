@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import ToastContainer from "@/components/ui/ToastContainer";
 import { useStore } from "@/context/AppContext";
 import { formatPrice, formatDateTime } from "@/utils/formatters";
@@ -33,7 +31,8 @@ export default function AdminDashboardPage() {
   const {
     user,
     isAdmin,
-    loginAsDemo,
+    login,
+    logout,
     products,
     categories,
     orders,
@@ -44,6 +43,20 @@ export default function AdminDashboardPage() {
     updateOrderStatus,
     showToast,
   } = useStore();
+
+  const [adminEmail, setAdminEmail] = useState("admin@shopease.com");
+  const [adminPassword, setAdminPassword] = useState("admin123");
+  const [authError, setAuthError] = useState("");
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await login(adminEmail, adminPassword);
+    if (!res.success) {
+      setAuthError(res.message);
+    } else {
+      setAuthError("");
+    }
+  };
 
   const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "categories">("overview");
 
@@ -84,43 +97,116 @@ export default function AdminDashboardPage() {
   // If user is not logged in as admin, display clean authorization shield
   if (!isAdmin) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-        <Navbar />
+      <div className="min-h-screen flex flex-col bg-slate-900 text-slate-100">
         <ToastContainer />
 
-        <main className="flex-1 flex items-center justify-center p-6 sm:p-12">
-          <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-xl">
-            <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-amber-200">
-              <Lock className="w-8 h-8" />
+        {/* Minimal Admin Header */}
+        <header className="border-b border-slate-800 bg-slate-950/50 py-4 px-6">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-900 flex items-center justify-center font-bold">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <span className="font-extrabold text-lg text-white">
+                ShopEase <span className="text-amber-400">Admin Portal</span>
+              </span>
             </div>
 
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              Protected Area
-            </span>
-            <h1 className="text-xl font-bold text-slate-900 mt-2 mb-2">
-              Admin Access Required
-            </h1>
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-              This panel is restricted to ShopEase store managers. For testing and evaluation, activate demo administrator privileges below.
-            </p>
-
-            <div className="p-4 bg-slate-50 rounded-2xl text-left text-xs space-y-1 mb-6 border border-slate-100 font-mono">
-              <p className="text-slate-600 font-sans font-bold mb-1">Demo Admin Credentials:</p>
-              <p><span className="text-slate-400">Email:</span> admin@shopease.com</p>
-              <p><span className="text-slate-400">Password:</span> admin123</p>
-            </div>
-
-            <button
-              onClick={() => loginAsDemo("admin")}
-              className="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold text-xs rounded-2xl transition shadow-md flex items-center justify-center gap-2"
+            <Link
+              href="/"
+              className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>1-Click Switch to Admin Mode</span>
-            </button>
+              <span>Back to Customer Store</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-slate-800/90 rounded-3xl border border-slate-700 p-8 shadow-2xl">
+            <div className="w-14 h-14 bg-amber-400/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-400/20">
+              <Lock className="w-7 h-7" />
+            </div>
+
+            <div className="text-center mb-6">
+              <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                Restricted Access
+              </span>
+              <h1 className="text-xl font-bold text-white mt-2 mb-1">
+                Admin Authentication
+              </h1>
+              <p className="text-xs text-slate-400">
+                Log in to manage catalog products, stock inventory, and customer orders.
+              </p>
+            </div>
+
+            {authError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium text-center">
+                {authError}
+              </div>
+            )}
+
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Admin Email
+                </label>
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-amber-400"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:outline-none focus:border-amber-400"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold text-xs rounded-xl transition shadow-lg shadow-amber-400/10 flex items-center justify-center gap-2"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Log In to Admin Portal</span>
+              </button>
+            </form>
+
+            <div className="mt-6 pt-5 border-t border-slate-700/60">
+              <div className="bg-slate-900/80 rounded-xl p-3 text-[11px] font-mono border border-slate-800 text-slate-400 space-y-1">
+                <p className="font-sans font-bold text-slate-300">Default Demo Credentials:</p>
+                <p><span className="text-slate-500">Email:</span> admin@shopease.com</p>
+                <p><span className="text-slate-500">Password:</span> admin123</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setAdminEmail("admin@shopease.com");
+                  setAdminPassword("admin123");
+                  await login("admin@shopease.com", "admin123");
+                }}
+                className="w-full mt-3 py-2 text-xs font-semibold text-amber-300 hover:text-amber-200 transition"
+              >
+                &rarr; Quick Fill &amp; Auto-Login as Admin
+              </button>
+            </div>
           </div>
         </main>
 
-        <Footer />
+        <footer className="py-4 text-center text-xs text-slate-600 border-t border-slate-800/80">
+          ShopEase Admin Console &bull; Separate Management Environment
+        </footer>
       </div>
     );
   }
@@ -167,7 +253,47 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <Navbar />
+      {/* Dedicated Admin Top Navigation */}
+      <header className="sticky top-0 z-40 bg-slate-900 border-b border-slate-800 text-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-900 flex items-center justify-center font-bold">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="font-extrabold text-base tracking-tight text-white">
+                ShopEase <span className="text-amber-400">Admin Portal</span>
+              </span>
+              <span className="hidden sm:inline-block ml-2 px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 font-mono">
+                Store Manager Console
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-slate-200 font-medium">Logged in as Administrator</span>
+            </div>
+
+            <Link
+              href="/"
+              target="_blank"
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition flex items-center gap-1.5 border border-slate-700 font-semibold"
+            >
+              <span>View Customer Store</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+
+            <button
+              onClick={logout}
+              className="px-3.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 transition font-bold"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
       <ToastContainer />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -911,7 +1037,9 @@ export default function AdminDashboardPage() {
         )}
       </main>
 
-      <Footer />
+      <footer className="bg-slate-900 border-t border-slate-800 text-slate-500 py-6 text-center text-xs">
+        <p>ShopEase Internal Store Management Portal &bull; SQLite Database Connected</p>
+      </footer>
     </div>
   );
 }
